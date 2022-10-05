@@ -7,10 +7,8 @@ version: '2.4'
 #     Media: 41-70
 #     Procurement: 71-100
 #     Download: 101-110
-#     Monitoring: 111-150 
-#     Testing: 151-200
-#       Pokertime: 172.11.0.171
-#       Speedtest: 172.11.0.172
+#     Monitoring: 111-150
+#     Miscellaneous: 151-200
 #---------------
 
 volumes:
@@ -29,10 +27,30 @@ volumes:
       type: cifs
       o: "nobrl,username=$SYN_USR,password=$SYN_PASS,rw,uid=1000,gid=1000"
       device: "//192.168.1.113/Plex\ Media/music/iTunes/iTunes\ Music"
+  # drivepool:
+  #   driver_opts:
+  #     type: cifs
+  #     o: "username=$SYN_USR,password=$SYN_PASS,rw,uid=1000,gid=1000,noserverino"
+  #     device: "//192.168.1.113/Plex\ Media"
+  # calibredive:
+  #   driver_opts:
+  #     type: cifs
+  #     o: "nobrl,username=$SYN_USR,password=$SYN_PASS,rw,uid=1000,gid=1000,noserverino"
+  #     device: "//192.168.1.113/Plex\ Media/eBooks"
+  # iTunesdrive:
+  #   driver_opts:
+  #     type: cifs
+  #     o: "nobrl,username=$SYN_USR,password=$SYN_PASS,rw,uid=1000,gid=1000"
+  #     device: "//192.168.1.113/Plex\ Media/music/iTunes/iTunes\ Music,noserverino"
+  # daapddrive:
+  #   driver_opts:
+  #     type: cifs
+  #     o: "nobrl,username=$SYN_USR,password=$SYN_PASS,rw,uid=1000,gid=1000"
+  #     device: "//192.168.1.113/Plex\ Media/music/iTunes"
+  postgres: {}
 
 services:
   #---Networking---
-  #working
   pihole:
     container_name: pihole
     image: pihole/pihole
@@ -45,17 +63,18 @@ services:
       TZ: $TZ
       WEBPASSWORD: $PI_HOLE_PASS
       PIHOLE_DNS_: 208.67.222.222;208.67.220.220
+      DNSMASQ_USER: root
     volumes:
       - '$DOCKER_PATH/etc-pihole/:/etc/pihole/'
       - '$DOCKER_PATH/etc-dnsmasq.d/:/etc/dnsmasq.d/'
+      # - '$DOCKER_PATH/etc-pihole-hosts/:/etc/hosts/'
     cap_add:
       - NET_ADMIN
-    restart: unless-stopped
+    restart: always
     networks:
       plex:
         ipv4_address: '172.11.0.010'
 
-  #working
   proxymanager:
     container_name: proxymanager
     image: jc21/nginx-proxy-manager #:2.9.6
@@ -83,7 +102,6 @@ services:
       plex:
         ipv4_address: '172.11.0.011'
 
-  #working
   proxymanagerdb:
     container_name: proxymanagerdb
     image: ghcr.io/linuxserver/mariadb
@@ -110,7 +128,6 @@ services:
         ipv4_address: '172.11.0.012'
 
   #---^Arr's---
-  #working
   portainer:
     image: portainer/portainer-ce
     container_name: portainer
@@ -129,7 +146,6 @@ services:
       plex:
         ipv4_address: '172.11.0.013'
 
-  #working
   prowlarr:
     container_name: prowlarr
     image: linuxserver/prowlarr:nightly
@@ -143,14 +159,14 @@ services:
     volumes:
       - $DOCKER_PATH/prowlarr:/config
     labels: 
-      - autoheal=true
+      autoheal: $AUTOHEAL_RESTART
     healthcheck:
       test: curl -fSs http://127.0.0.1:9696 > /dev/null || exit 1
       start_period: 20s
       timeout: 5s
       interval: 5s
       retries: 3    
-    restart: unless-stopped
+    restart: always
     depends_on:
       sabnzbd:
         condition: service_healthy
@@ -159,8 +175,7 @@ services:
     networks:
       plex:
         ipv4_address: '172.11.0.071'
-
-  #working    
+  
   sonarr:
     container_name: sonarr
     image : linuxserver/sonarr
@@ -178,12 +193,12 @@ services:
        PGID: $PGID
     labels: 
       autoheal: $AUTOHEAL_RESTART
-    healthcheck:
-      test: curl -fSs http://127.0.0.1:8989/api/system/status?apikey=${SONARR_API_KEY__SECRET} || exit 1
-      start_period: 45s
-      timeout: 10s
-      interval: 5s
-      retries: 3
+    # healthcheck:
+    #   test: curl -fSs http://127.0.0.1:8989/api/system/status?apikey=${SONARR_API_KEY__SECRET} || exit 1
+    #   start_period: 45s
+    #   timeout: 10s
+    #   interval: 5s
+    #   retries: 3
     depends_on:
       sabnzbd:
         condition: service_healthy
@@ -195,7 +210,6 @@ services:
       plex:
         ipv4_address: '172.11.0.072'
 
-  #working
   sonarr-4k:
     container_name: sonarr-4k
     image : linuxserver/sonarr
@@ -213,12 +227,12 @@ services:
        PGID: $PGID
     labels: 
       autoheal: $AUTOHEAL_RESTART
-    healthcheck:
-      test: curl -fSs http://127.0.0.1:8989/api/system/status?apikey=${SONARR_4K_API_KEY_SECRECT} || exit 1
-      start_period: 45s
-      timeout: 10s
-      interval: 5s
-      retries: 3
+    # healthcheck:
+    #   test: curl -fSs http://127.0.0.1:8990/api/system/status?apikey=${SONARR_4K_API_KEY_SECRECT} || exit 1
+    #   start_period: 45s
+    #   timeout: 10s
+    #   interval: 5s
+    #   retries: 3
     depends_on:
       sabnzbd:
         condition: service_healthy
@@ -230,7 +244,6 @@ services:
       plex:
         ipv4_address: '172.11.0.073'
 
- #working
   radarr:
     container_name: radarr
     image: linuxserver/radarr
@@ -241,19 +254,19 @@ services:
       - $SLAVE_PATH:/CompletedTorrents:rw
     ports:
       - 7878:7878
-    restart: unless-stopped
+    restart: always
     environment:
       PUID: $PUID
       PGID: $PGID
       TZ: $TZ
     labels: 
       autoheal: $AUTOHEAL_RESTART
-    healthcheck:
-      test: curl -fSs http://127.0.0.1:7878/api/system/status?apikey=${RADARR_API_KEY__SECRET} || exit 1
-      start_period: 45s
-      timeout: 10s
-      interval: 5s
-      retries: 3
+    # healthcheck:
+    #   test: curl -fSs http://127.0.0.1:7878/api/system/status?apikey=${RADARR_API_KEY__SECRET} || exit 1
+    #   start_period: 45s
+    #   timeout: 10s
+    #   interval: 5s
+    #   retries: 3
     depends_on:
       sabnzbd:
         condition: service_healthy
@@ -265,7 +278,6 @@ services:
       plex:
         ipv4_address: '172.11.0.074'
 
-  #working
   radarr-4k:
     container_name: radarr-4k
     image: linuxserver/radarr
@@ -276,19 +288,19 @@ services:
       - $SLAVE_PATH:/CompletedTorrents:rw
     ports:
       - 7879:7878
-    restart: unless-stopped
+    restart: always
     environment:
       PUID: $PUID
       PGID: $PGID
       TZ: $TZ
     labels: 
       autoheal: $AUTOHEAL_RESTART
-    healthcheck:
-      test: curl -fSs http://127.0.0.1:7878/api/system/status?apikey=${RADARR_4K_API_KEY__SECRECT} || exit 1
-      start_period: 45s
-      timeout: 10s
-      interval: 5s
-      retries: 3
+    # healthcheck:
+    #   test: curl -fSs http://127.0.0.1:7879/api/system/status?apikey=${RADARR_4K_API_KEY__SECRECT} || exit 1
+    #   start_period: 45s
+    #   timeout: 10s
+    #   interval: 5s
+    #   retries: 3
     depends_on:
       sabnzbd:
         condition: service_healthy
@@ -300,7 +312,6 @@ services:
       plex:
         ipv4_address: '172.11.0.075'
 
-  #working
   lidarr:
     image: linuxserver/lidarr
     container_name: lidarr
@@ -315,7 +326,7 @@ services:
       - $SLAVE_PATH:/CompletedTorrents:rw
     ports:
       - 8686:8686
-    restart: unless-stopped
+    restart: always
     labels: 
       autoheal: $AUTOHEAL_RESTART
     healthcheck:
@@ -335,7 +346,6 @@ services:
       plex:
         ipv4_address: '172.11.0.076'
 
-  #working
   readarr:
     container_name: readarr
     ports:
@@ -351,9 +361,9 @@ services:
       - $SLAVE_PATH:/sabComplete:rw
       - $SLAVE_PATH:/CompletedTorrents:rw
     image: linuxserver/readarr:nightly    
-    restart: unless-stopped
+    restart: always
     labels: 
-      - autoheal=true
+      autoheal: $AUTOHEAL_RESTART
     healthcheck:
       test: curl -fSs http://127.0.0.1:8787 > /dev/null || exit 1
       start_period: 20s
@@ -371,11 +381,42 @@ services:
       plex:
         ipv4_address: '172.11.0.077'
 
-  #working
+  bazarr:
+    image: linuxserver/bazarr
+    container_name: bazarr
+    environment:
+      PUID: $PUID
+      PGID: $PGID
+      TZ: $TZ
+    volumes:
+      - $DOCKER_PATH/bazarr:/config
+      - drivepool:/media:rw
+      - $SLAVE_PATH:/sabComplete:rw
+      - $SLAVE_PATH:/CompletedTorrents:rw
+    ports:
+      - 6767:6767
+    restart: unless-stopped
+    # healthcheck:
+    #   test: curl -fSs http://127.0.0.1:6767 > /dev/null || exit 1
+    #   start_period: 20s
+    #   interval: 5s
+    #   timeout: 5s
+    #   retries: 3
+    labels: 
+       autoheal: $AUTOHEAL_RESTART
+    depends_on:
+      - sonarr
+      - radarr
+      - sonarr-4k
+      - radarr-4k
+    networks:
+      plex:
+        ipv4_address: '172.11.0.078'
+
   tdarr:
     container_name: tdarr
     image: haveagitgat/tdarr:latest
-    restart: unless-stopped
+    restart: always
     network_mode: bridge
     ports:
       - 8265:8265 # webUI port
@@ -397,13 +438,11 @@ services:
       - $DOCKER_PATH/tdarr_transcoding:/transcode
     labels: 
       autoheal: $AUTOHEAL_RESTART
-    restart: unless-stopped
 
-  #working
   tdarr-node:
     container_name: tdarr-node
     image: haveagitgat/tdarr_node:latest
-    restart: unless-stopped
+    restart: always
     network_mode: service:tdarr
     environment:
       TZ: $TZ
@@ -426,40 +465,37 @@ services:
     runtime: nvidia
     devices:
       - /dev/dri:/dev/dri
-    depends_on:
-      - tdarr
 
   #---Media Managers/Monitoring---
-  #working
-  ombi:
-    container_name: ombi
-    image: linuxserver/ombi:development
-    restart: unless-stopped
-    ports:
-      - 9898:3579
-    volumes:
-      - $DOCKER_PATH/ombi:/config
-    environment:
-      TZ: $TZ
-      PUID: $PUID
-      PGID: $PGID
-    depends_on:
-      sonarr:
-        condition: service_healthy
-      radarr:
-        condition: service_healthy
-      lidarr:
-        condition: service_healthy
-    networks:
-        plex:
-          ipv4_address: '172.11.0.113'
+  # ombi:
+  #   container_name: ombi
+  #   image: linuxserver/ombi:development
+  #   restart: always
+  #   ports:
+  #     - 9898:3579
+  #   volumes:
+  #     - $DOCKER_PATH/ombi:/config
+  #   environment:
+  #     TZ: $TZ
+  #     PUID: $PUID
+  #     PGID: $PGID
+  #   depends_on:
+  #     sonarr:
+  #       condition: service_healthy
+  #     radarr:
+  #       condition: service_healthy
+  #     lidarr:
+  #       condition: service_healthy
+  #   networks:
+  #       plex:
+  #         ipv4_address: '172.11.0.111'
   
-  #working
   plex:
     container_name: plex
     hostname: plex_server
-    restart: unless-stopped
+    restart: always
     image: linuxserver/plex
+    runtime: nvidia
     volumes:
       - $DOCKER_PATH/plex/config:/config
       - $DOCKER_PATH/plex/transcode:/transcode
@@ -486,25 +522,25 @@ services:
       PLEX_CLAIM: $PLEX_CLAIM
       VERSION: $VERSION
       ADVERTIZED_IP: $ADVERTISE_IP
+      NVIDIA_VISIBLE_DEVICES: GPU-c6fde719-fbbb-6f8a-1b81-156f9d9b9d26
     labels: 
       autoheal: $AUTOHEAL_RESTART
-    healthcheck:
-      test: curl -fsS http://localhost:32400/identity > /dev/null || exit 1
-      start_period: 60s
-      timeout: 10s
-      interval: 5s
-      retries: 3
+    # healthcheck:
+    #   test: curl -fsS http://localhost:32400/identity > /dev/null || exit 1
+    #   start_period: 60s
+    #   timeout: 10s
+    #   interval: 5s
+    #   retries: 3
     devices:
       - /dev/dri:/dev/dri
     networks:
       plex:
         ipv4_address: '172.11.0.041'
 
-  #working
   tautulli:
     container_name: tautulli
     image: tautulli/tautulli
-    restart: unless-stopped
+    restart: always
     ports:
       - 8181:8181
     volumes:
@@ -518,9 +554,8 @@ services:
       - plex
     networks:
       plex:
-        ipv4_address: '172.11.0.114'
+        ipv4_address: '172.11.0.112'
 
-  #working
   posterr:
     image: petersem/posterr
     container_name: posterr
@@ -531,17 +566,16 @@ services:
       BASEPATH: ""
     volumes:
       - $DOCKER_PATH/posterr/config:/usr/src/app/config
-      - ./docker$DOCKER_PATH/posterr/custom:/usr/src/app/public/custom
+      - $DOCKER_PATH/posterr/custom:/usr/src/app/public/custom
     ports:
       - 9876:3000
-    restart: unless-stopped
+    restart: always
     depends_on:
       - plex
     networks:
       plex:
-        ipv4_address: '172.11.0.115'
+        ipv4_address: '172.11.0.113'
 
-  #working
   gaps:
     ports:
       - 8484:8484
@@ -551,15 +585,16 @@ services:
     volumes:
       - $DOCKER_PATH/gaps:/usr/data
     image: housewrecker/gaps
-    restart: unless-stopped
+    restart: always
     networks:
       plex:
-        ipv4_address: '172.11.0.116'
+        ipv4_address: '172.11.0.114'
 
-  #working
   calibre:
     image: linuxserver/calibre
     container_name: calibre
+    security_opt:
+      - seccomp:unconfined #optional
     environment:
       PUID: $PUID
       PGID: $PGID
@@ -576,14 +611,13 @@ services:
       - 7081:8081
     labels: 
       autoheal: $AUTOHEAL_RESTART
-    restart: unless-stopped
+    restart: always
     depends_on:
       - readarr
     networks:
       plex:
         ipv4_address: '172.11.0.042'
 
-  #working
   calibre-web:
     image: linuxserver/calibre-web
     container_name: calibre-web
@@ -602,12 +636,11 @@ services:
       autoheal: $AUTOHEAL_RESTART
     depends_on: 
       - calibre
-    restart: unless-stopped
+    restart: always
     networks:
       plex:
         ipv4_address: '172.11.0.043'
 
-  #working
   watchtower:
     container_name: watchtower
     image: containrrr/watchtower
@@ -623,9 +656,8 @@ services:
     restart: always
     networks:
       plex:
-        ipv4_address: '172.11.0.117'
+        ipv4_address: '172.11.0.115'
 
-  #working
   uptime-kuma:
     image: louislam/uptime-kuma
     container_name: uptime-kuma
@@ -637,38 +669,11 @@ services:
       - 3001:3001
     volumes:
       - $DOCKER_PATH/uptime-kuma/config:/app/data
-    restart: unless-stopped
-    depends_on:
-      - calibre
-      - calibre-web
-      - dozzle
-      - gaps
-      - homer
-      - jdownloader-2
-      - lidarr
-      - proxymanager
-      - ombi
-      - organizr
-      - pihole
-      - plex
-      - portainer
-      - posterr
-      - prowlarr
-      - qbittorrent
-      - radarr
-      - radarr-4k
-      - readarr
-      - sabnzbd
-      - sonarr
-      - sonarr-4k
-      - speedtest
-      - tautulli
-      - tdarr
+    restart: always
     networks:
       plex:
-        ipv4_address: '172.11.0.118'
+        ipv4_address: '172.11.0.116'
 
-  #working
   monocker:
     container_name: monocker
     image: petersem/monocker
@@ -687,64 +692,217 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     labels: 
       autoheal: $AUTOHEAL_RESTART
-    restart: unless-stopped
+    restart: always
     networks:
       plex:
-        ipv4_address: '172.11.0.119'
+        ipv4_address: '172.11.0.117'
 
-  #working
   dozzle:
     container_name: dozzle
     image: amir20/dozzle:latest
+    environment:
+      PUID: $PUID
+      PGID: $PGID
+      TZ: $TZ
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     ports:
       - 9999:8080
     labels: 
       autoheal: $AUTOHEAL_RESTART
-    restart: unless-stopped
+    restart: always
     networks:
       plex:
-        ipv4_address: '172.11.0.120'
+        ipv4_address: '172.11.0.118'
 
-  #working
-  homer:
-    image: b4bz/homer:latest
-    container_name: homer
-    ports:
-      - 8882:8080
-    volumes:
-      - $DOCKER_PATH/homer:/www/assets
+  # homer:
+  #   image: b4bz/homer:latest
+  #   container_name: homer
+  #   environment:
+  #     PUID: $PUID
+  #     PGID: $PGID
+  #     TZ: $TZ
+  #   ports:
+  #     - 8882:8080
+  #   volumes:
+  #     - $DOCKER_PATH/homer:/www/assets
+  #   labels: 
+  #     autoheal: $AUTOHEAL_RESTART
+  #   restart: always
+  #   networks:
+  #     plex:
+  #       ipv4_address: '172.11.0.044'
+
+  homarr:
+    container_name: homarr
+    image: ghcr.io/ajnart/homarr:latest
+    restart: always
     labels: 
       autoheal: $AUTOHEAL_RESTART
-    restart: unless-stopped
-    networks:
-      plex:
-        ipv4_address: '172.11.0.044'
-
-  #working
-  organizr:
-    image: organizr/organizr
-    container_name: organizr
-    ports:
-      - 580:80
-      - 5443:443
-    volumes:
-      - $DOCKER_PATH/organizr:/config
     environment:
       PUID: $PUID
       PGID: $PGID
       TZ: $TZ
-      fpm: "true"
-    labels: 
-      autoheal: $AUTOHEAL_RESTART
-    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - $DOCKER_PATH/homarr/configs:/app/data/configs:rw
+      - $DOCKER_PATH/homarr/icons:/app/public/icons:rw
+    ports:
+      - 7575:7575
     networks:
       plex:
         ipv4_address: '172.11.0.045'
 
+  # Do not really use this
+  # organizr:
+  #   image: organizr/organizr
+  #   container_name: organizr
+  #   ports:
+  #     - 580:80
+  #     - 5443:443
+  #   volumes:
+  #     - $DOCKER_PATH/organizr:/config
+  #   environment:
+  #     PUID: $PUID
+  #     PGID: $PGID
+  #     TZ: $TZ
+  #     fpm: "true"
+  #   labels: 
+  #     autoheal: $AUTOHEAL_RESTART
+  #   restart: always
+
+  speedtest:
+    container_name: speedtest
+    image: henrywhitaker3/speedtest-tracker:latest
+    ports:
+      - 8765:80
+    volumes:
+      - $DOCKER_PATH/speedtest:/config
+    environment:
+      PUID: $PUID
+      PGID: $PGID
+      TZ: $TZ
+      OOKLA_EULA_GDPR: "true"
+    logging:
+      driver: "json-file"
+      options:
+        max-file: "10"
+        max-size: "200k"
+    labels: 
+      autoheal: $AUTOHEAL_RESTART
+    restart: always
+    networks:
+      plex:
+        ipv4_address: '172.11.0.046'
+
+  # mira:
+  #   image: jams246/mira
+  #   container_name: mira
+  #   pid: host # Required to show host system processes and not the containers processes.
+  #   ports:
+  #     - 44356:44356
+  #     - 44357:44357 #Needs to be 44357 on both sides
+  #   volumes:
+  #     - /var/run/docker.sock:/var/run/docker.sock:ro # [OPTIONAL] Show docker containers
+  #   environment:
+  #     PUID: $PUID
+  #     PGID: $PGID
+  #     TZ: $TZ
+  #   labels: 
+  #     autoheal: $AUTOHEAL_RESTART
+  #   restart: always
+  #   networks:
+  #     plex:
+  #       ipv4_address: '172.11.0.119'
+
+  homeassistant:
+    container_name: homeassistant
+    restart: always
+    image: homeassistant/home-assistant
+    volumes:
+      - $DOCKER_PATH/homeassistant:/config
+      - /etc/localtime:/etc/localtime:ro
+    ports:
+      - 8123:8123
+    privileged: true
+    environment:
+      PUID: $PUID
+      PGID: $PGID
+      TZ: $TZ
+    #cannot put this in a network
+
+  homechart:
+    container_name: homechart
+    image: candiddev/homechart:latest
+    environment:
+      PUID: $PUID
+      PGID: $PGID
+      TZ: $TZ
+      HOMECHART_POSTGRESQL_HOSTNAME: homechartdb
+      HOMECHART_POSTGRESQL_PASSWORD: HomeChart
+      HOMECHART_POSTGRESQL_USERNAME: homechart
+    volumes:
+      - $DOCKER_PATH/homechart:/config
+    ports:
+      - 3003:3000
+    restart: always
+    depends_on:
+      - homechartdb
+
+  homechartdb:
+    container_name: homechartdb
+    image: postgres
+    environment:
+      PUID: $PUID
+      PGID: $PGID
+      TZ: $TZ
+      POSTGRES_PASSWORD: HomeChart
+      POSTGRES_USER: homechart
+      PGDATA: /var/lib/postgresql/data/homechartdb
+    restart: always
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    ports:
+      - 5432:5432
+
+  overseerr:
+    image: linuxserver/overseerr
+    container_name: overseerr
+    environment:
+      PUID: $PUID
+      PGID: $PGID
+      TZ: $TZ
+    volumes:
+      - $DOCKER_PATH/overseerr:/config
+    ports:
+      - 5055:5055
+    restart: always
+    labels: 
+      autoheal: $AUTOHEAL_RESTART
+    depends_on:
+      - sonarr
+      - radarr
+      - lidarr
+    networks:
+      plex:
+        ipv4_address: '172.11.0.120'
+
+  glances:
+    container_name: glances
+    image: nicolargo/glances:latest-alpine
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      GLANCES_OPT: -w
+      PUID: $PUID
+      PGID: $PGID
+      TZ: $TZ
+    ports:
+      - 61208:61208
+    restart: always
+    network_mode: host
+
   #---Download Clients---
-  #working
   sabnzbd:
     image: linuxserver/sabnzbd
     container_name: sabnzbd
@@ -767,17 +925,16 @@ services:
     ports:
       - 8080:8080
       - 9090:9090
-    restart: unless-stopped
+    restart: always
     networks:
       plex:
         ipv4_address: '172.11.0.101'
 
-  #working?
   qbittorrent:
     container_name: qbittorrent
     image: hotio/qbittorrent
     ports:
-      - "8888:8080"
+      - 8888:8080
     environment:
       PUID: $PUID
       PGID: $PGID
@@ -795,34 +952,33 @@ services:
       retries: 3
     labels: 
       autoheal: $AUTOHEAL_RESTART
-    restart: unless-stopped
+    restart: always
     networks:
       plex:
         ipv4_address: '172.11.0.102'
 
-  #working
-  jdownloader-2:
-    container_name: jdownloader-2
-    image: jlesage/jdownloader-2
-    ports:
-      - 5800:5800
-      - 3129:3129
-    environment:
-      PUID: $PUID
-      PGID: $PGID
-      TZ: $TZ
-      KEEP_APP_RUNNING: 1
-    volumes:
-      - $DOCKER_PATH/jdownloader-2:/config:rw
-      - $SLAVE_PATH:/output:rw
-    labels: 
-      autoheal: $AUTOHEAL_RESTART
-    restart: unless-stopped
-    networks:
-      plex:
-        ipv4_address: '172.11.0.103'
+  # jdownloader-2:
+  #   container_name: jdownloader-2
+  #   image: jlesage/jdownloader-2
+  #   ports:
+  #     - 5800:5800
+  #     - 3129:3129
+  #   environment:
+  #     PUID: $PUID
+  #     PGID: $PGID
+  #     TZ: $TZ
+  #     KEEP_APP_RUNNING: 1
+  #   volumes:
+  #     - $DOCKER_PATH/jdownloader-2:/config:rw
+  #     - $SLAVE_PATH:/output:rw
+  #   labels: 
+  #     autoheal: $AUTOHEAL_RESTART
+  #   restart: always
+  #   networks:
+  #     plex:
+  #       ipv4_address: '172.11.0.103'
 
-  #---Testing---#
+  #---Miscellaneous---#
   pokertime:
     image: sebazzz/pokertime
     container_name: pokertime
@@ -838,45 +994,146 @@ services:
     labels: 
       autoheal: $AUTOHEAL_RESTART
     restart: unless-stopped
+    networks:
+      plex:
+        ipv4_address: '172.11.0.151'
 
-  speedtest:
-    container_name: speedtest
-    image: henrywhitaker3/speedtest-tracker:latest
+  searxng:
+    container_name: searxng
+    image: searxng/searxng:latest
     ports:
-      - 8765:80
+     - "5080:8080"
     volumes:
-      - $DOCKER_PATH/speedtest:/config
+      - $DOCKER_PATH/searxng:/etc/searxng:rw
     environment:
-      PUID: $PUID
-      PGID: $PGID
-      TZ: $TZ
-      OOKLA_EULA_GDPR: "true"
+      - SEARXNG_BASE_URL=https://${SEARXNG_HOSTNAME:-localhost}/
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+      - DAC_OVERRIDE
+    labels: 
+      autoheal: $AUTOHEAL_RESTART
+    restart: always
     logging:
       driver: "json-file"
       options:
-        max-file: "10"
-        max-size: "200k"
-    labels: 
-      autoheal: $AUTOHEAL_RESTART
-    restart: unless-stopped
+        max-size: "1m"
+        max-file: "1"
     networks:
       plex:
-        ipv4_address: '172.11.0.172'
+        ipv4_address: '172.11.0.152'
 
-  homeassistant:
-    container_name: homeassistant
-    restart: unless-stopped
-    image: homeassistant/home-assistant
-    volumes:
-      - $DOCKER_PATH/homeassistant:/config
-      - /etc/localtime:/etc/localtime:ro
-    ports:
-      - 8123:8123
-    privileged: true
-    environment:
-      PUID: $PUID
-      PGID: $PGID
-      TZ: $TZ
+  #---Testing---#
+  # Dont know if I really want this
+  # daapd:
+  #   image: linuxserver/daapd
+  #   container_name: daapd
+  #   network_mode: host
+  #   environment:
+  #     PUID: $PUID
+  #     PGID: $PGID
+  #     TZ: $TZ
+  #   ports:
+  #     - 3689:3689
+  #   volumes:
+  #     - $DOCKER_PATH/daapd:/config
+  #     - daapddrive:/music:rw
+  #     #- drivepool/music:/testing:rw
+  #     #- iTunesdrive:/music:rw
+  #   restart: always
+  #   labels: 
+  #     autoheal: $AUTOHEAL_RESTART
+
+  # adminerdb:
+  #   container_name: adminerdb
+  #   image: postgres:14
+  #   restart: always
+  #   environment:
+  #     PUID: $PUID
+  #     PGID: $PGID
+  #     TZ: $TZ
+  #     POSTGRES_USER: example
+  #     POSTGRES_PASSWORD: example
+  #     PGDATA: /var/lib/postgresql/data/adminerdbdata
+  #   volumes:
+  #     - postgres:/var/lib/postgresql/data
+  #   ports:
+  #     - 5432:5432
+
+  # adminer:
+  #   container_name: adminer
+  #   image: adminer
+  #   restart: always
+  #   environment:
+  #     PUID: $PUID
+  #     PGID: $PGID
+  #     TZ: $TZ
+  #   ports:
+  #     - 1234:8080
+  #   depends_on:
+  #     - adminerdb
+
+  # whisparr:
+  #   container_name: whisparr
+  #   image: hotio/whisparr:nightly
+  #   volumes:
+  #     - $DOCKER_PATH/whisparr:/config
+  #     - drivepool:/media
+  #     - $SLAVE_PATH:/sabComplete:rw
+  #     - $SLAVE_PATH:/CompletedTorrents:rw
+  #   ports:
+  #     - 6969:6969
+  #   restart: always
+  #   environment:
+  #     PUID: $PUID
+  #     PGID: $PGID
+  #     TZ: $TZ
+  #   labels: 
+  #     autoheal: $AUTOHEAL_RESTART
+  #   depends_on:
+  #     sabnzbd:
+  #       condition: service_healthy
+  #     prowlarr:
+  #       condition: service_healthy
+  #     qbittorrent:
+  #       condition: service_healthy
+
+  # heimdall:
+  #   image: lscr.io/linuxserver/heimdall:latest
+  #   container_name: heimdall
+  #   environment:
+  #     PUID: $PUID
+  #     PGID: $PGID
+  #     TZ: $TZ
+  #   volumes:
+  #     - $DOCKER_PATH/heimdall:/config
+  #   ports:
+  #     - 900:80
+  #     - 901:443
+    #restart: always
+    #labels: 
+    #  autoheal: $AUTOHEAL_RESTART
+
+  # postgres-testing:
+  #   container_name: postgres-testing
+  #   image: postgres
+  #   environment:
+  #     PUID: $PUID
+  #     PGID: $PGID
+  #     TZ: $TZ
+  #     POSTGRES_PASSWORD: admin
+  #     POSTGRES_USER: admin
+  #     PGDATA: /var/lib/postgresql/data/testing
+  #   # restart: always
+  #   volumes:
+  #     - $DOCKER_PATH/postgres/etc:/etc/postgresql
+  #     - $DOCKER_PATH/postgres/log:/var/log/postgresql
+  #     - $DOCKER_PATH/postgres:/var/lib/postgresql
+  #   ports:
+  #     - 1234:5432
 
 networks:
   plex:
